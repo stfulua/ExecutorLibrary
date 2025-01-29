@@ -45,6 +45,25 @@ local ColorTheme = {
     Accent = Color3.fromRGB(0, 170, 255)
 }
 
+local CONFIG_FOLDER = "ExecutorLibrary_Config"
+local CONFIG_FILE = "settings.json"
+
+local function SaveConfig()
+    if not isfolder(CONFIG_FOLDER) then
+        makefolder(CONFIG_FOLDER)
+    end
+    writefile(CONFIG_FOLDER.."/"..CONFIG_FILE, HttpService:JSONEncode(config))
+end
+
+local function LoadConfig()
+    if isfile(CONFIG_FOLDER.."/"..CONFIG_FILE) then
+        config = HttpService:JSONDecode(readfile(CONFIG_FOLDER.."/"..CONFIG_FILE))
+    else
+        config = table.clone(DEFAULT_CONFIG)
+        SaveConfig()
+    end
+end
+
 function ExecutorLibrary:SetupTopBar()
     local title = Instance.new("TextLabel")
     title.Text = "EXECUTOR LIBRARY"
@@ -101,6 +120,12 @@ function ExecutorLibrary:CreateWindow(options)
                 end,
                 Notify = function(_, options)
                     self:CreateNotification(options.Title, options.Content, options.Duration, options.Color)
+                end,
+                SaveConfiguration = function()
+                    SaveConfig()
+                end,
+                LoadConfiguration = function()
+                    LoadConfig()
                 end
             }
             return methods[key]
@@ -109,7 +134,7 @@ function ExecutorLibrary:CreateWindow(options)
 end
 
 function ExecutorLibrary:HandleKeySystem(settings)
-    local keyFile = settings.FileName .. ".txt"
+    local keyFile = CONFIG_FOLDER.."/"..settings.FileName .. ".json"
     local validKeys = settings.Key
     
     local function ValidateKey(key)
@@ -120,7 +145,7 @@ function ExecutorLibrary:HandleKeySystem(settings)
     end
 
     if isfile(keyFile) then
-        local savedKey = readfile(keyFile)
+        local savedKey = HttpService:JSONDecode(readfile(keyFile))
         if ValidateKey(savedKey) then
             ExecutorLibrary.PremiumFeatures = true
             return
@@ -135,7 +160,7 @@ function ExecutorLibrary:HandleKeySystem(settings)
             {Text = "Submit", Callback = function(input)
                 if ValidateKey(input) then
                     if settings.SaveKey then
-                        writefile(keyFile, input)
+                        writefile(keyFile, HttpService:JSONEncode(input))
                     end
                     ExecutorLibrary.PremiumFeatures = true
                     return true
@@ -187,70 +212,11 @@ function ExecutorLibrary:CreateSection(name, premium)
                     
                     table.insert(section.Elements, btn)
                     return btn
-                end,
-                CreateToggle = function(_, text, options)
-                    return self:CreateToggle(text, options)
-                end,
-                CreateSlider = function(_, text, options)
-                    return self:CreateSlider(text, options)
-                end,
-                CreateDropdown = function(_, text, options)
-                    return self:CreateDropdown(text, options)
-                end,
-                CreateKeybind = function(_, text, options)
-                    return self:CreateKeybind(text, options)
-                end,
-                CreateColorPicker = function(_, text, options)
-                    return self:CreateColorPicker(text, options)
                 end
             }
             return elements[key]
         end
     })
-end
-
-function ExecutorLibrary:CreateNotification(title, content, duration, color)
-    local notification = Instance.new("Frame")
-    notification.Size = UDim2.new(1, -10, 0, 60)
-    notification.Position = UDim2.new(0, 5, 0, #activeNotifications * 65)
-    notification.BackgroundColor3 = color or ColorTheme.Secondary
-    notification.Parent = NotificationContainer
-    
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Text = title
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextSize = 14
-    titleLabel.TextColor3 = ColorTheme.Text
-    titleLabel.Size = UDim2.new(1, -10, 0, 20)
-    titleLabel.Position = UDim2.new(0, 10, 0, 5)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Parent = notification
-    
-    local contentLabel = Instance.new("TextLabel")
-    contentLabel.Text = content
-    contentLabel.Font = Enum.Font.Gotham
-    contentLabel.TextSize = 12
-    contentLabel.TextColor3 = ColorTheme.Text
-    contentLabel.Size = UDim2.new(1, -10, 0, 30)
-    contentLabel.Position = UDim2.new(0, 10, 0, 25)
-    contentLabel.BackgroundTransparency = 1
-    contentLabel.Parent = notification
-    
-    table.insert(activeNotifications, notification)
-    
-    task.delay(duration or 3, function()
-        TweenService:Create(notification, TweenInfo.new(0.25), {Position = UDim2.new(1, 0, notification.Position.Y.Scale, notification.Position.Y.Offset)}):Play()
-        task.wait(0.25)
-        notification:Destroy()
-        table.remove(activeNotifications, table.find(activeNotifications, notification))
-    end)
-end
-
-function ExecutorLibrary:SetUIVisible(state)
-    ExecutorLibrary.UIState = state
-    TweenService:Create(MainFrame, TWEEN_INFO, {
-        Position = state and UDim2.new(0.5, -300, 0.5, -225) or UDim2.new(0.5, -300, 1.5, 225)
-    }):Play()
 end
 
 function ExecutorLibrary:Initialize()
@@ -264,6 +230,8 @@ function ExecutorLibrary:Initialize()
     MainFrame.BackgroundColor3 = ColorTheme.Background
     MainFrame.ClipsDescendants = true
     MainFrame.Parent = ScreenGui
+
+    LoadConfig()
 
     TopBar.Size = UDim2.new(1, 0, 0, 45)
     TopBar.BackgroundColor3 = ColorTheme.Secondary
@@ -286,7 +254,6 @@ function ExecutorLibrary:Initialize()
     NotificationContainer.Parent = ScreenGui
 
     self:SetupTopBar()
-    self:LoadConfig()
 
     if self.DebugMode or DebugX then
         self:CreateExampleWindow()
