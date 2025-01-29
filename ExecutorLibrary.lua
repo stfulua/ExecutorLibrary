@@ -7,15 +7,18 @@ local RunService = game:GetService("RunService")
 
 ExecutorLibrary.DebugMode = RunService:IsStudio()
 ExecutorLibrary.PremiumFeatures = false
+ExecutorLibrary.UIState = true
+
 local DebugX = false
+if DebugX then DebugX = true else DebugX = false end
 
 local DEFAULT_CONFIG = {
     Keybind = Enum.KeyCode.K,
-    UIState = true,
     Theme = "Dark",
     Settings = {
         Notifications = true,
-        PremiumKey = ""
+        PremiumKey = "",
+        AutoSave = true
     }
 }
 
@@ -30,125 +33,111 @@ local config = table.clone(DEFAULT_CONFIG)
 local currentTabs = {}
 local activeNotifications = {}
 local keySystemEnabled = false
+local TWEEN_INFO = TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+local ColorTheme = {
+    Background = Color3.fromRGB(24, 24, 24),
+    Secondary = Color3.fromRGB(32, 32, 32),
+    Button = Color3.fromRGB(45, 45, 45),
+    Text = Color3.new(0.9, 0.9, 0.9),
+    Success = Color3.new(0.2, 0.8, 0.4),
+    Error = Color3.new(0.9, 0.2, 0.2),
+    Warning = Color3.new(0.9, 0.8, 0.2),
+    Accent = Color3.fromRGB(0, 170, 255)
+}
 
-local TWEEN_INFO = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+function ExecutorLibrary:SetupTopBar()
+    local title = Instance.new("TextLabel")
+    title.Text = "EXECUTOR LIBRARY"
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 16
+    title.TextColor3 = ColorTheme.Accent
+    title.Size = UDim2.new(0.4, 0, 1, 0)
+    title.Position = UDim2.new(0.3, 0, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Parent = TopBar
 
-function ExecutorLibrary:Initialize()
-    ScreenGui.Name = "ExecutorLibrary"
-    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    ScreenGui.Parent = self.DebugMode and game:GetService("CoreGui") or Players.LocalPlayer:WaitForChild("PlayerGui")
+    local closeButton = Instance.new("ImageButton")
+    closeButton.Size = UDim2.new(0, 28, 0, 28)
+    closeButton.Position = UDim2.new(1, -36, 0.5, -14)
+    closeButton.Image = "rbxassetid://11454279392"
+    closeButton.ImageColor3 = ColorTheme.Text
+    closeButton.MouseButton1Click:Connect(function()
+        self:SetUIVisible(not self.UIState)
+    end)
+    closeButton.Parent = TopBar
 
-    MainFrame.Size = UDim2.new(0, 600, 0, 450)
-    MainFrame.Position = UDim2.new(0.5, -300, 0.5, -225)
-    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-    MainFrame.ClipsDescendants = true
-    MainFrame.Parent = ScreenGui
-
-    TopBar.Size = UDim2.new(1, 0, 0, 40)
-    TopBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    TopBar.Parent = MainFrame
-
-    SideBar.Size = UDim2.new(0, 60, 1, -40)
-    SideBar.Position = UDim2.new(0, 0, 0, 40)
-    SideBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    SideBar.Parent = MainFrame
-
-    TabContainer.Size = UDim2.new(1, -60, 1, -40)
-    TabContainer.Position = UDim2.new(0, 60, 0, 40)
-    TabContainer.BackgroundTransparency = 1
-    TabContainer.Parent = MainFrame
-
-    NotificationContainer.Size = UDim2.new(0, 300, 0.5, 0)
-    NotificationContainer.Position = UDim2.new(1, 5, 0.5, 0)
-    NotificationContainer.AnchorPoint = Vector2.new(1, 0.5)
-    NotificationContainer.BackgroundTransparency = 1
-    NotificationContainer.Parent = ScreenGui
-
-    self:SetupTopBar()
-    self:LoadConfig()
-
-    if self.DebugMode or DebugX then
-        local exampleWindow = self:CreateWindow({
-            Name = "Example Window",
-            LoadingTitle = "Executor Library",
-            LoadingSubtitle = "Debug Mode Active",
-            KeySystem = true,
-            KeySettings = {
-                Title = "Premium Access",
-                Subtitle = "Enter your key below",
-                Note = "Contact developer for premium key",
-                FileName = "ExecutorKey",
-                SaveKey = true,
-                GrabKeyFromSite = false,
-                Key = {"DEFAULTKEY123"}
-            }
-        })
-        
-        local mainTab = exampleWindow:CreateTab("Main", "rbxassetid://0")
-        local premiumTab = exampleWindow:CreateTab("Premium", "rbxassetid://0")
-        
-        mainTab:CreateSection("Free Features"):CreateButton("Test Notification", function()
-            self:CreateNotification("Regular Feature", 3, Color3.new(0.2, 0.6, 1))
-        end)
-        
-        local premiumSection = premiumTab:CreateSection("Premium Tools", true)
-        premiumSection:CreateButton("Secret Feature", function()
-            self:CreateNotification("Premium Feature Unlocked!", 3, Color3.new(0, 1, 0.5))
-        end)
-    end
+    local settingsButton = Instance.new("ImageButton")
+    settingsButton.Size = UDim2.new(0, 28, 0, 28)
+    settingsButton.Position = UDim2.new(1, -72, 0.5, -14)
+    settingsButton.Image = "rbxassetid://11454270709"
+    settingsButton.ImageColor3 = ColorTheme.Text
+    settingsButton.MouseButton1Click:Connect(function()
+        self:SwitchTab("Settings")
+    end)
+    settingsButton.Parent = TopBar
 end
 
 function ExecutorLibrary:CreateWindow(options)
     local window = {
         Tabs = {},
         CurrentTab = nil,
-        Config = {
-            Name = options.Name,
-            KeySystem = options.KeySystem
-        }
+        Config = options
     }
     
     if options.KeySystem then
-        keySystemEnabled = true
         self:HandleKeySystem(options.KeySettings)
     end
     
     return setmetatable(window, {
-        __index = function(_, key)
-            if key == "CreateTab" then
-                return function(_, tabName, tabIcon)
-                    local newTab = self:CreateTab(tabName, tabIcon)
-                    table.insert(window.Tabs, newTab)
-                    return newTab
+        __index = function(t, key)
+            local methods = {
+                CreateTab = function(_, name, icon, premium)
+                    local tab = self:CreateTab(name, icon, premium)
+                    table.insert(window.Tabs, tab)
+                    return tab
+                end,
+                CreateSection = function(_, name, premium)
+                    return self:CreateSection(name, premium)
+                end,
+                Notify = function(_, options)
+                    self:CreateNotification(options.Title, options.Content, options.Duration, options.Color)
                 end
-            end
+            }
+            return methods[key]
         end
     })
 end
 
 function ExecutorLibrary:HandleKeySystem(settings)
     local keyFile = settings.FileName .. ".txt"
+    local validKeys = settings.Key
     
-    if isfile(keyFile) and readfile(keyFile) ~= "" then
+    local function ValidateKey(key)
+        if settings.GrabKeyFromSite then
+            return game:HttpGet(settings.KeyURL):find(key) ~= nil
+        end
+        return table.find(validKeys, key) ~= nil
+    end
+
+    if isfile(keyFile) then
         local savedKey = readfile(keyFile)
-        if table.find(settings.Key, savedKey) then
-            self.PremiumFeatures = true
+        if ValidateKey(savedKey) then
+            ExecutorLibrary.PremiumFeatures = true
             return
         end
     end
-    
-    local keyInput = self:CreatePopup({
+
+    local popup = self:CreatePopup({
         Title = settings.Title,
         Content = settings.Subtitle,
-        InputText = "Enter key here...",
+        InputText = "Enter key...",
         Buttons = {
             {Text = "Submit", Callback = function(input)
-                if table.find(settings.Key, input) then
+                if ValidateKey(input) then
                     if settings.SaveKey then
                         writefile(keyFile, input)
                     end
-                    self.PremiumFeatures = true
+                    ExecutorLibrary.PremiumFeatures = true
                     return true
                 end
                 return false
@@ -158,118 +147,100 @@ function ExecutorLibrary:HandleKeySystem(settings)
     })
 end
 
-function ExecutorLibrary:CreateTab(name, icon)
-    local tab = {
+function ExecutorLibrary:CreateSection(name, premium)
+    local section = {
         Name = name,
-        Sections = {},
-        PremiumLocked = false
+        Elements = {},
+        PremiumLocked = premium or false
     }
     
-    local tabButton = Instance.new("ImageButton")
-    tabButton.Size = UDim2.new(0, 40, 0, 40)
-    tabButton.Position = UDim2.new(0.5, -20, 0, #currentTabs * 50 + 10)
-    tabButton.Image = icon
-    tabButton.Parent = SideBar
-    
-    local tabFrame = Instance.new("ScrollingFrame")
-    tabFrame.Size = UDim2.new(1, 0, 1, 0)
-    tabFrame.BackgroundTransparency = 1
-    tabFrame.Visible = false
-    tabFrame.Parent = TabContainer
-    
-    tabButton.MouseButton1Click:Connect(function()
-        self:SwitchTab(tab)
-    end)
-    
-    table.insert(currentTabs, tab)
-    
-    return setmetatable(tab, {
-        __index = function(_, key)
-            if key == "CreateSection" then
-                return function(_, sectionName, premium)
-                    local section = {
-                        Name = sectionName,
-                        Elements = {},
-                        PremiumLocked = premium or false
-                    }
+    return setmetatable(section, {
+        __index = function(t, key)
+            local elements = {
+                CreateButton = function(_, text, callback)
+                    local btn = Instance.new("TextButton")
+                    btn.Text = text
+                    btn.Size = UDim2.new(1, -10, 0, 36)
+                    btn.Position = UDim2.new(0, 5, 0, #section.Elements * 42 + 5)
+                    btn.BackgroundColor3 = ColorTheme.Button
+                    btn.Font = Enum.Font.Gotham
+                    btn.TextSize = 13
+                    btn.TextColor3 = ColorTheme.Text
+                    btn.AutoButtonColor = false
+                    btn.Parent = section.Frame
                     
-                    local sectionFrame = Instance.new("Frame")
-                    sectionFrame.Size = UDim2.new(1, -20, 0, 0)
-                    sectionFrame.Position = UDim2.new(0, 10, 0, #tab.Sections * 50 + 10)
-                    sectionFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-                    sectionFrame.Parent = tabFrame
+                    btn.MouseEnter:Connect(function()
+                        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = ColorTheme.Button:Lighten(0.1)}):Play()
+                    end)
                     
-                    local sectionLabel = Instance.new("TextLabel")
-                    sectionLabel.Text = sectionName
-                    sectionLabel.TextColor3 = Color3.new(1, 1, 1)
-                    sectionLabel.Font = Enum.Font.GothamSemibold
-                    sectionLabel.TextSize = 12
-                    sectionLabel.Position = UDim2.new(0, 10, 0, 5)
-                    sectionLabel.Size = UDim2.new(1, -20, 0, 20)
-                    sectionLabel.BackgroundTransparency = 1
-                    sectionLabel.Parent = sectionFrame
+                    btn.MouseLeave:Connect(function()
+                        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = ColorTheme.Button}):Play()
+                    end)
                     
-                    if section.PremiumLocked then
-                        sectionFrame.Visible = self.PremiumFeatures
-                        sectionLabel.TextColor3 = Color3.new(0, 1, 0.5)
-                    end
-                    
-                    table.insert(tab.Sections, section)
-                    
-                    return setmetatable(section, {
-                        __index = function(_, elemKey)
-                            local elements = {
-                                CreateButton = function(_, btnText, callback)
-                                    local btn = Instance.new("TextButton")
-                                    btn.Text = btnText
-                                    btn.Size = UDim2.new(1, -10, 0, 30)
-                                    btn.Position = UDim2.new(0, 5, 0, #section.Elements * 35 + 5)
-                                    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-                                    btn.Font = Enum.Font.Gotham
-                                    btn.TextSize = 12
-                                    btn.Parent = sectionFrame
-                                    
-                                    btn.MouseButton1Click:Connect(function()
-                                        if self.PremiumFeatures or not section.PremiumLocked then
-                                            callback()
-                                        else
-                                            self:CreateNotification("Premium Feature Locked", 3, Color3.new(1, 0, 0))
-                                        end
-                                    end)
-                                    
-                                    table.insert(section.Elements, btn)
-                                    return btn
-                                end
-                            }
-                            return elements[elemKey]
+                    btn.MouseButton1Click:Connect(function()
+                        if self.PremiumFeatures or not section.PremiumLocked then
+                            callback()
+                        else
+                            self:CreateNotification("Premium Feature Locked", 3, ColorTheme.Error)
                         end
-                    })
+                    end)
+                    
+                    table.insert(section.Elements, btn)
+                    return btn
+                end,
+                CreateToggle = function(_, text, options)
+                    return self:CreateToggle(text, options)
+                end,
+                CreateSlider = function(_, text, options)
+                    return self:CreateSlider(text, options)
+                end,
+                CreateDropdown = function(_, text, options)
+                    return self:CreateDropdown(text, options)
+                end,
+                CreateKeybind = function(_, text, options)
+                    return self:CreateKeybind(text, options)
+                end,
+                CreateColorPicker = function(_, text, options)
+                    return self:CreateColorPicker(text, options)
                 end
-            end
+            }
+            return elements[key]
         end
     })
 end
 
-function ExecutorLibrary:CreateNotification(text, duration, color)
+function ExecutorLibrary:CreateNotification(title, content, duration, color)
     local notification = Instance.new("Frame")
-    notification.Size = UDim2.new(1, -10, 0, 40)
-    notification.Position = UDim2.new(0, 5, 0, #activeNotifications * 45)
-    notification.BackgroundColor3 = color or Color3.fromRGB(45, 45, 45)
+    notification.Size = UDim2.new(1, -10, 0, 60)
+    notification.Position = UDim2.new(0, 5, 0, #activeNotifications * 65)
+    notification.BackgroundColor3 = color or ColorTheme.Secondary
     notification.Parent = NotificationContainer
     
-    local label = Instance.new("TextLabel")
-    label.Text = text
-    label.Size = UDim2.new(1, -10, 1, 0)
-    label.Position = UDim2.new(0, 10, 0, 0)
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 12
-    label.TextColor3 = Color3.new(1, 1, 1)
-    label.BackgroundTransparency = 1
-    label.Parent = notification
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Text = title
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextSize = 14
+    titleLabel.TextColor3 = ColorTheme.Text
+    titleLabel.Size = UDim2.new(1, -10, 0, 20)
+    titleLabel.Position = UDim2.new(0, 10, 0, 5)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Parent = notification
+    
+    local contentLabel = Instance.new("TextLabel")
+    contentLabel.Text = content
+    contentLabel.Font = Enum.Font.Gotham
+    contentLabel.TextSize = 12
+    contentLabel.TextColor3 = ColorTheme.Text
+    contentLabel.Size = UDim2.new(1, -10, 0, 30)
+    contentLabel.Position = UDim2.new(0, 10, 0, 25)
+    contentLabel.BackgroundTransparency = 1
+    contentLabel.Parent = notification
     
     table.insert(activeNotifications, notification)
     
     task.delay(duration or 3, function()
+        TweenService:Create(notification, TweenInfo.new(0.25), {Position = UDim2.new(1, 0, notification.Position.Y.Scale, notification.Position.Y.Offset)}):Play()
+        task.wait(0.25)
         notification:Destroy()
         table.remove(activeNotifications, table.find(activeNotifications, notification))
     end)
@@ -278,8 +249,48 @@ end
 function ExecutorLibrary:SetUIVisible(state)
     ExecutorLibrary.UIState = state
     TweenService:Create(MainFrame, TWEEN_INFO, {
-        Position = state and UDim2.new(0.5, -300, 0.5, -225) or UDim2.new(0.5, -300, 1, 225)
+        Position = state and UDim2.new(0.5, -300, 0.5, -225) or UDim2.new(0.5, -300, 1.5, 225)
     }):Play()
+end
+
+function ExecutorLibrary:Initialize()
+    ScreenGui.Name = "ExecutorLibrary"
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.Parent = self.DebugMode and game:GetService("CoreGui") or Players.LocalPlayer:WaitForChild("PlayerGui")
+
+    MainFrame.Size = UDim2.new(0, 600, 0, 500)
+    MainFrame.Position = UDim2.new(0.5, -300, 0.5, -250)
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainFrame.BackgroundColor3 = ColorTheme.Background
+    MainFrame.ClipsDescendants = true
+    MainFrame.Parent = ScreenGui
+
+    TopBar.Size = UDim2.new(1, 0, 0, 45)
+    TopBar.BackgroundColor3 = ColorTheme.Secondary
+    TopBar.Parent = MainFrame
+
+    SideBar.Size = UDim2.new(0, 70, 1, -45)
+    SideBar.Position = UDim2.new(0, 0, 0, 45)
+    SideBar.BackgroundColor3 = ColorTheme.Secondary
+    SideBar.Parent = MainFrame
+
+    TabContainer.Size = UDim2.new(1, -70, 1, -45)
+    TabContainer.Position = UDim2.new(0, 70, 0, 45)
+    TabContainer.BackgroundTransparency = 1
+    TabContainer.Parent = MainFrame
+
+    NotificationContainer.Size = UDim2.new(0, 350, 0.5, 0)
+    NotificationContainer.Position = UDim2.new(1, 10, 0.5, 0)
+    NotificationContainer.AnchorPoint = Vector2.new(1, 0.5)
+    NotificationContainer.BackgroundTransparency = 1
+    NotificationContainer.Parent = ScreenGui
+
+    self:SetupTopBar()
+    self:LoadConfig()
+
+    if self.DebugMode or DebugX then
+        self:CreateExampleWindow()
+    end
 end
 
 UserInputService.InputBegan:Connect(function(input)
