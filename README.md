@@ -1,30 +1,30 @@
 # Executor Library 🌟  
 **Advanced Roblox Scripting Interface**
 
-<<<Why Choose Us?>>>  
+## Why Choose Us?
   ⚡ **Blazing Fast Performance**  
   🔓 **Fully Open Source**  
   🛡️ **Enterprise-Grade Security**  
   🎮 **Optimized for Roblox Engine**  
   🔔 **Smart Notification System**  
 
-<<<Key Features>>>  
-<<<
+## Key Features
+
   🔑 Dual Key System (Default/Premium)  
   🔒 Feature Locking System  
   📁 Auto-Save Configurations  
   🔄 Update Manager Built-in  
   💬 Discord Integration Ready  
   🎨 Custom Theme Support  
->>>
 
-<<<Installation>>>  
-```
-local Executor = loadstring(game:HttpGet("https://raw.githubusercontent.com/stfulua/ExecutorLibrary/main/ExecutorLibrary.lua"))()
+
+## Installation
+```lua
+local ExecutorLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/stfulua/ExecutorLibrary/main/ExecutorLibrary.lua"))()
 ```
 
-<<<Basic Implementation>>>  
-```
+## Basic Implementation
+```lua
 Executor:Initialize()
 local MainApp = Executor:CreateWindow("My Script", true)  -- Second arg enables key system
 local HomeTab = MainApp:CreateTab("Home", "rbxassetid://0")
@@ -35,8 +35,8 @@ MainSection:CreateButton("Toggle UI", function()
 end)
 ```
 
-<<<Premium Feature Example>>>  
-```
+## Premium Feature Example
+```lua
 local PremiumTab = MainApp:CreateTab("VIP", "rbxassetid://0", true)  -- Third arg marks as premium
 local SecretSection = PremiumTab:CreateSection("Unlocked Tools", true)
 
@@ -47,7 +47,7 @@ SecretSection:CreateButton("Activate", function()
 end)
 ```
 
-<<<Key System Setup>>>  
+## Key System Setup
 ```lua
 -- Default key (simple verification)
 Executor:RegisterKey("DEFAULT_KEY_123")
@@ -59,12 +59,12 @@ Executor:RegisterPremiumKey(
 )
 ```
 
-<<<Support & Development>>>  
+## Support & Development
 📩 Report Issues: [GitHub Issues](INSERT_ISSUE_LINK_HERE)  
 💡 Feature Requests: [Community Forum](INSERT_FORUM_LINK_HERE)  
 🛠️ Contribute: Fork and submit PRs!  
 
-<<<License>>>  
+## License  
 MIT License - Free for personal and commercial use  
 
 ⭐ **Star This Repo** if you find it useful!  
